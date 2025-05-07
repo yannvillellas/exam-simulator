@@ -64,26 +64,34 @@ The exam simulator expects a specific format for the markdown file containing qu
 1. Question text here?
 
    1. Correct Answer (always the first option)
-   2. Wrong Option
-   3. Wrong Option
-   4. Wrong Option
+   1. Wrong Option
+   1. Wrong Option
+   1. Wrong Option
 
-2. [AI-Generated] Another question here?
+1. [AI-Generated] Another question here?
 
    1. Correct Answer (always the first option)
-   2. Wrong Option
-   3. Wrong Option
-   4. Wrong Option
+   1. Wrong Option
+   1. Wrong Option
+   1. Wrong Option
+
+1. Question with multiple correct answers? <!-- valid:3 -->
+
+   1. Correct Answer 1
+   1. Correct Answer 2
+   1. Correct Answer 3
+   1. Wrong Option
 ```
 
 ### Format Rules
 
 1. Each question starts with a number followed by a period (e.g., `1.`, `2.`)
-2. Options should be indented and numbered (e.g., `1.`, `2.`)
-3. **The first option is always the correct answer** (the order will be randomized when displayed)
-4. If a question is AI-generated, add `[AI-Generated]` in the question text
-5. Questions can be organized under section headings (`##`, `###`)
-6. Questions must be separated by a blank line
+1. Options should be indented and numbered. You can use either sequential numbering (`1.`, `2.`, `3.`) or Markdown's auto-numbering (all `1.`), as the numbers will be randomized when displayed anyway
+1. **By default, the first option is the correct answer** (the order will be randomized when displayed)
+1. For questions with multiple correct answers, add a markdown comment `<!-- valid:N -->` where N is the number of correct answers
+1. If a question is AI-generated, add `[AI-Generated]` in the question text
+1. Questions can be organized under section headings (`##`, `###`)
+1. Questions must be separated by a blank line
 
 ### Example
 
@@ -93,16 +101,23 @@ The exam simulator expects a specific format for the markdown file containing qu
 1. What is 2 + 2?
 
    1. 4 (this is the correct answer)
-   2. 3
-   3. 5
-   4. 6
+   1. 3
+   1. 5
+   1. 6
 
-2. [AI-Generated] What is the square root of 16?
+1. [AI-Generated] What is the square root of 16?
 
    1. 4 (this is the correct answer)
-   2. 2
-   3. 6
-   4. 8
+   1. 2
+   1. 6
+   1. 8
+
+1. Which numbers are prime? <!-- valid:2 -->
+
+   1. 2
+   1. 3
+   1. 4
+   1. 6
 ```
 
 ## User Interface

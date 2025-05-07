@@ -171,6 +171,13 @@ class ExamSimulator:
             question_text = question_match.group(1).strip()
             options = []
 
+            valid_answers = 1
+            for line in lines:
+                valid_match = re.search(r"<!--\s*valid:\s*(\d+)\s*-->", line)
+                if valid_match:
+                    valid_answers = int(valid_match.group(1))
+                    break
+
             option_lines = []
             for line in lines[1:]:
                 if re.match(r"^\s*\d+\.\s+", line):
@@ -180,11 +187,11 @@ class ExamSimulator:
 
             if option_lines:
                 options = option_lines
-                correct_answer = 0
                 self.questions.append({
                     "question": question_text,
                     "options": options,
-                    "correct_answer": correct_answer,
+                    "correct_answer": 0,
+                    "valid_answers": valid_answers,
                     "is_ai": is_ai
                 })
 
@@ -258,8 +265,9 @@ class ExamSimulator:
         if not self.questions:
             return
         question_data = self.get_current_question()
+        clean_question = re.sub(r"<!--.*?-->", "", question_data['question']).strip()
         self.question_text.config(
-            text=f"Q{self.current_question_index + 1}: {question_data['question']}"
+            text=f"Q{self.current_question_index + 1}: {clean_question}"
         )
         options_frame = ttk.Frame(self.answer_frame)
         options_frame.pack(fill=tk.BOTH, expand=True, anchor="w")
@@ -306,14 +314,14 @@ class ExamSimulator:
     def show_result(self, display_index):
         """Show the result of the selected answer and provide feedback."""
         question_data = self.get_current_question()
-        correct_answer = question_data["correct_answer"]
+        valid_answers_count = question_data.get("valid_answers", 1)
         selected_option_index = self.shuffled_option_indices[display_index]
-        is_correct = selected_option_index == correct_answer
+        is_correct = selected_option_index < valid_answers_count
         for radio, _ in self.answer_widgets:
             radio.config(state=tk.DISABLED)
         for i, (radio, icon_label) in enumerate(self.answer_widgets):
             orig_idx = self.shuffled_option_indices[i]
-            if orig_idx == correct_answer:
+            if orig_idx < valid_answers_count:
                 icon_label.config(text="✓", fg=SUCCESS_COLOR)
             elif i == display_index:
                 icon_label.config(text="×", fg=ERROR_COLOR)
