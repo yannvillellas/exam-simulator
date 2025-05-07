@@ -69,6 +69,7 @@ The exam simulator expects a specific format for the markdown file containing qu
    4. Wrong Option
 
 2. [AI-Generated] Another question here?
+
    1. Correct Answer (always the first option)
    2. Wrong Option
    3. Wrong Option
@@ -97,6 +98,7 @@ The exam simulator expects a specific format for the markdown file containing qu
    4. 6
 
 2. [AI-Generated] What is the square root of 16?
+
    1. 4 (this is the correct answer)
    2. 2
    3. 6
