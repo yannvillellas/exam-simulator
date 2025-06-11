@@ -43,20 +43,23 @@ class ExamSimulator:
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
 
-        width = max(int(screen_width * 0.8), 800)
-        height = max(int(screen_height * 0.8), 600)
+        # Set to fullscreen
+        self.root.geometry(f"{screen_width}x{screen_height}+0+0")
+        self.root.minsize(800, 800)
+        self.root.resizable(True, True)
 
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2
-
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
-        self.root.minsize(800, 600)
-
-        self.root.resizable(False, False)
+        # Alternative: Use state('zoomed') for Windows or attributes('-zoomed', True) for Linux
+        try:
+            self.root.state("zoomed")  # Windows
+        except tk.TclError:
+            try:
+                self.root.attributes("-zoomed", True)  # Linux
+            except tk.TclError:
+                pass  # Fallback to geometry setting above
         self.result_shown = False
 
-        self.window_width = width
-        self.window_height = height
+        self.window_width = screen_width
+        self.window_height = screen_height
 
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
@@ -74,6 +77,8 @@ class ExamSimulator:
         self.setup_ui()
         self.load_questions()
         self.show_question()
+
+        self.root.bind("<Configure>", self.on_window_resize)
 
     def set_dark_mode(self):
         """Configure the user interface with dark mode theme colors."""
@@ -400,14 +405,16 @@ class ExamSimulator:
         for display_idx, (_orig_idx, option) in enumerate(options):
             frame = tk.Frame(options_frame, bg=BACKGROUND_COLOR)
             frame.grid(row=display_idx, column=0, sticky="ew", pady=5)
+            frame.grid_columnconfigure(0, weight=1)
+
             radio = tk.Radiobutton(
                 frame,
                 text=option,
                 variable=self.selected_answer,
                 value=str(display_idx),
                 command=self.on_radio_selected,
-                wraplength=self.window_width - 80,
-                anchor="w",
+                wraplength=self.window_width - 240,
+                anchor="nw",
                 justify="left",
                 bg=BACKGROUND_COLOR,
                 fg=FOREGROUND_COLOR,
@@ -418,11 +425,17 @@ class ExamSimulator:
                 activebackground=BACKGROUND_COLOR,
                 activeforeground=FOREGROUND_COLOR,
             )
-            radio.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10, pady=10)
+            radio.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+
             icon_label = tk.Label(
-                frame, text="", bg=BACKGROUND_COLOR, font=("Arial", 32), width=2
+                frame,
+                text="",
+                bg=BACKGROUND_COLOR,
+                font=("Arial", 32),
+                width=2,
+                anchor="n",
             )
-            icon_label.pack(side=tk.LEFT, padx=0, ipadx=0, ipady=0)
+            icon_label.grid(row=0, column=1, sticky="ne", padx=(0, 10), pady=10)
             self.answer_widgets.append((radio, icon_label))
         self.update_status()
 
@@ -473,11 +486,13 @@ class ExamSimulator:
 
     def on_window_resize(self, event):
         """Adjust UI elements when the window is resized."""
+        if event.widget != self.root:
+            return
         self.window_width = event.width
         self.window_height = event.height
-        self.question_text.config(wraplength=self.window_width - 20)
+        self.question_text.config(wraplength=self.window_width - 80)
         for radio, _ in getattr(self, "answer_widgets", []):
-            radio.config(wraplength=self.window_width - 40)
+            radio.config(wraplength=self.window_width - 240)
 
 
 def main():
