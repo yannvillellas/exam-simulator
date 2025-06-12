@@ -15,10 +15,17 @@ import argparse
 from tkinter import ttk, messagebox
 from collections import defaultdict
 
-FOREGROUND_COLOR = "#CCCCCC"
-BACKGROUND_COLOR = "#181818"
-SUCCESS_COLOR = "#00C853"
-ERROR_COLOR = "#D50000"
+# Light mode colors
+LIGHT_FOREGROUND_COLOR = "#333333"
+LIGHT_BACKGROUND_COLOR = "#FFFFFF"
+LIGHT_SUCCESS_COLOR = "#2E7D32"
+LIGHT_ERROR_COLOR = "#C62828"
+
+# Dark mode colors
+DARK_FOREGROUND_COLOR = "#CCCCCC"
+DARK_BACKGROUND_COLOR = "#181818"
+DARK_SUCCESS_COLOR = "#00C853"
+DARK_ERROR_COLOR = "#D50000"
 
 
 class ExamSimulator:
@@ -28,6 +35,7 @@ class ExamSimulator:
         self.root = root
         self.exam_file = exam_file
 
+        # Set window title based on exam file
         if exam_file:
             if os.path.dirname(os.path.abspath(exam_file)) == os.path.abspath(
                 os.getcwd()
@@ -40,6 +48,7 @@ class ExamSimulator:
         else:
             self.root.title("Exam Simulator")
 
+        # Configure window to fullscreen
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
 
@@ -48,7 +57,7 @@ class ExamSimulator:
         self.root.minsize(800, 800)
         self.root.resizable(True, True)
 
-        # Alternative: Use state('zoomed') for Windows or attributes('-zoomed', True) for Linux
+        # Platform-specific fullscreen methods
         try:
             self.root.state("zoomed")  # Windows
         except tk.TclError:
@@ -58,16 +67,20 @@ class ExamSimulator:
                 pass  # Fallback to geometry setting above
         self.result_shown = False
 
+        # Store window dimensions
         self.window_width = screen_width
         self.window_height = screen_height
 
+        # Configure grid layout
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
 
-        self.set_dark_mode()
+        # Initialize theme and quiz state
+        self.dark_mode = False
+        self.apply_theme()
 
         self.questions = []
-        self.unique_questions = []  # List of unique questions
+        self.unique_questions = []
         self.question_order = []
         self.current_question_index = 0
         self.selected_answer = tk.StringVar()
@@ -80,54 +93,86 @@ class ExamSimulator:
 
         self.root.bind("<Configure>", self.on_window_resize)
 
-    def set_dark_mode(self):
-        """Configure the user interface with dark mode theme colors."""
-        self.root.configure(bg=BACKGROUND_COLOR)
+    def get_current_colors(self):
+        """Get the current color scheme based on dark mode setting."""
+        if self.dark_mode:
+            return {
+                "bg": DARK_BACKGROUND_COLOR,
+                "fg": DARK_FOREGROUND_COLOR,
+                "success": DARK_SUCCESS_COLOR,
+                "error": DARK_ERROR_COLOR,
+            }
+        else:
+            return {
+                "bg": LIGHT_BACKGROUND_COLOR,
+                "fg": LIGHT_FOREGROUND_COLOR,
+                "success": LIGHT_SUCCESS_COLOR,
+                "error": LIGHT_ERROR_COLOR,
+            }
 
+    def apply_theme(self):
+        """Apply the current theme (dark or light mode) to the UI."""
+        colors = self.get_current_colors()
+
+        self.root.configure(bg=colors["bg"])
+
+        # Configure TTK theme styles
         style = ttk.Style()
         style.theme_use("default")
 
-        style.configure("TFrame", background=BACKGROUND_COLOR)
+        style.configure("TFrame", background=colors["bg"])
         style.configure(
             "TLabel",
-            background=BACKGROUND_COLOR,
-            foreground=FOREGROUND_COLOR,
+            background=colors["bg"],
+            foreground=colors["fg"],
             anchor="w",
             justify="left",
         )
 
         style.configure(
             "TRadiobutton",
-            background=BACKGROUND_COLOR,
-            foreground=FOREGROUND_COLOR,
+            background=colors["bg"],
+            foreground=colors["fg"],
             anchor="w",
             justify="left",
         )
         style.map(
             "TRadiobutton",
-            background=[("active", BACKGROUND_COLOR)],
-            foreground=[("active", FOREGROUND_COLOR)],
+            background=[("active", colors["bg"])],
+            foreground=[("active", colors["fg"])],
         )
 
+        style.configure("TButton", background=colors["bg"], foreground=colors["fg"])
         style.configure(
-            "TButton", background=BACKGROUND_COLOR, foreground=FOREGROUND_COLOR
-        )
-        style.configure(
-            "TCheckbutton", background=BACKGROUND_COLOR, foreground=FOREGROUND_COLOR
+            "TCheckbutton", background=colors["bg"], foreground=colors["fg"]
         )
         style.map(
             "TCheckbutton",
-            background=[("active", BACKGROUND_COLOR)],
-            foreground=[("active", FOREGROUND_COLOR)],
+            background=[("active", colors["bg"])],
+            foreground=[("active", colors["fg"])],
         )
+
+    def toggle_theme(self):
+        """Toggle between dark and light mode."""
+        self.dark_mode = self.dark_mode_var.get()
+        self.apply_theme()
+
+        if (
+            hasattr(self, "questions")
+            and self.questions
+            and hasattr(self, "answer_widgets")
+        ):
+            self.show_question()
 
     def setup_ui(self):
         """Set up the main user interface components and layout."""
+        # Main container frame
         self.main_frame = ttk.Frame(self.root)
         self.main_frame.grid(row=0, column=0, sticky="nsew")
         self.main_frame.grid_columnconfigure(0, weight=1)
         self.main_frame.grid_rowconfigure(1, weight=1)
 
+        # Question display area
         self.question_text = ttk.Label(
             self.main_frame,
             wraplength=self.window_width - 80,
@@ -138,13 +183,16 @@ class ExamSimulator:
         )
         self.question_text.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
 
+        # Answer options container
         self.answer_frame = ttk.Frame(self.main_frame)
         self.answer_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
         self.answer_frame.grid_columnconfigure(0, weight=1)
 
+        # Control buttons and checkboxes
         self.controls_frame = ttk.Frame(self.main_frame)
         self.controls_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
+        # Quiz control checkboxes
         self.randomize_var = tk.BooleanVar(value=False)
         self.randomize_check = ttk.Checkbutton(
             self.controls_frame,
@@ -163,16 +211,28 @@ class ExamSimulator:
         )
         self.non_ai_check.pack(side=tk.LEFT, padx=5)
 
+        self.dark_mode_var = tk.BooleanVar(value=self.dark_mode)
+        self.dark_mode_check = ttk.Checkbutton(
+            self.controls_frame,
+            text="Dark Mode",
+            variable=self.dark_mode_var,
+            command=self.toggle_theme,
+        )
+        self.dark_mode_check.pack(side=tk.LEFT, padx=5)
+
+        # Action buttons
         self.restart_btn = ttk.Button(
             self.controls_frame, text="Restart Quiz", command=self.restart_quiz
         )
         self.restart_btn.pack(side=tk.RIGHT, padx=5)
 
+        # Status display
         self.status_label = ttk.Label(self.main_frame, text="")
         self.status_label.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
 
     def compute_question_key(self, question):
         """Compute a unique key for a question to identify duplicates."""
+        # Clean question text for comparison
         question_text = re.sub(r"<!--.*?-->", "", question["question"].lower().strip())
 
         question_text = re.sub(r"[.,;:()]", "", question_text)
@@ -193,9 +253,11 @@ class ExamSimulator:
         with open(self.exam_file, "r", encoding="utf-8") as file:
             content = file.read()
 
+        # Parse question blocks from markdown
         pattern = r"(\d+\.\s+.*?)(?=\n\d+\.\s+|\n##|\n### |\Z)"
         question_blocks = re.findall(pattern, content, re.DOTALL)
 
+        # Track exam sections
         current_section = "Unknown Exam"
         section_pattern = r"^#+\s+(.+)$"
         sections = {}
@@ -208,6 +270,7 @@ class ExamSimulator:
                 current_section = section_match.group(1)
                 sections[line_number] = current_section
 
+        # Process each question block
         self.questions = []
         question_key_map = defaultdict(list)
 
@@ -224,6 +287,7 @@ class ExamSimulator:
             question_text = question_match.group(1).strip()
             options = []
 
+            # Extract valid answer count from comments
             valid_answers = 1
             for line in lines:
                 valid_match = re.search(r"<!--\s*valid:\s*(\d+)\s*-->", line)
@@ -231,6 +295,7 @@ class ExamSimulator:
                     valid_answers = int(valid_match.group(1))
                     break
 
+            # Extract answer options
             option_lines = []
             for line in lines[1:]:
                 if re.match(r"^\s*\d+\.\s+", line):
@@ -241,6 +306,7 @@ class ExamSimulator:
             if option_lines:
                 options = option_lines
 
+                # Determine question's source section
                 line_num = content.count("\n", 0, content.find(block))
                 section = current_section
                 for sec_line, sec_name in sorted(sections.items(), reverse=True):
@@ -248,6 +314,7 @@ class ExamSimulator:
                         section = sec_name
                         break
 
+                # Create question data structure
                 question_data = {
                     "question": question_text,
                     "options": options,
@@ -263,6 +330,7 @@ class ExamSimulator:
                 self.questions.append(question_data)
                 question_key_map[question_key].append(len(self.questions) - 1)
 
+        # Process duplicates and create unique question list
         for question_key, indices in question_key_map.items():
             if len(indices) > 1:
                 base_question = self.questions[indices[0]]
@@ -277,6 +345,7 @@ class ExamSimulator:
                 ]
                 self.unique_questions.append(indices[0])
 
+        # Validate loaded questions
         if not self.questions:
             messagebox.showerror(
                 "Error",
@@ -284,6 +353,7 @@ class ExamSimulator:
             )
             return
 
+        # Display loading summary
         total_questions = len(self.questions)
         unique_questions = len(self.unique_questions)
         print(
@@ -291,6 +361,7 @@ class ExamSimulator:
             f"({unique_questions} unique) from the exam file."
         )
 
+        # Report duplicate questions found
         duplicates_found = sum(
             1
             for idx in self.unique_questions
@@ -328,16 +399,17 @@ class ExamSimulator:
 
     def initialize_question_order(self):
         """Set up the question sequence based on current filtering settings."""
-        # Always use unique questions
+        # Start with unique questions only
         base_indices = self.unique_questions
 
-        # Apply AI filter if needed
+        # Apply AI filter if enabled
         filtered = [
             i
             for i in base_indices
             if not (self.non_ai_var.get() and self.questions[i].get("is_ai"))
         ]
 
+        # Apply randomization if enabled
         if self.randomized:
             self.question_order = filtered.copy()
             random.shuffle(self.question_order)
@@ -375,6 +447,7 @@ class ExamSimulator:
 
     def show_question(self):
         """Display the current question and its answer options in the UI."""
+        # Clear previous question UI
         for widget in self.answer_frame.winfo_children():
             widget.destroy()
         self.root.unbind("<Button-1>")
@@ -385,6 +458,7 @@ class ExamSimulator:
         question_data = self.get_current_question()
         clean_question = re.sub(r"<!--.*?-->", "", question_data["question"]).strip()
 
+        # Format question text with numbering
         question_prefix = f"Q{self.current_question_index + 1}: "
         question_text = f"{question_prefix}{clean_question}"
 
@@ -395,6 +469,7 @@ class ExamSimulator:
 
         self.question_text.config(text=f"{question_text}{section_info}")
 
+        # Create answer options container
         options_frame = ttk.Frame(self.answer_frame)
         options_frame.pack(fill=tk.BOTH, expand=True, anchor="w")
         options_frame.columnconfigure(0, weight=1)
@@ -402,8 +477,11 @@ class ExamSimulator:
         options = list(enumerate(question_data["options"]))
         random.shuffle(options)
         self.shuffled_option_indices = [i for i, _ in options]
+        colors = self.get_current_colors()
+
+        # Create radio buttons for each answer option
         for display_idx, (_orig_idx, option) in enumerate(options):
-            frame = tk.Frame(options_frame, bg=BACKGROUND_COLOR)
+            frame = tk.Frame(options_frame, bg=colors["bg"])
             frame.grid(row=display_idx, column=0, sticky="ew", pady=5)
             frame.grid_columnconfigure(0, weight=1)
 
@@ -416,21 +494,22 @@ class ExamSimulator:
                 wraplength=self.window_width - 240,
                 anchor="nw",
                 justify="left",
-                bg=BACKGROUND_COLOR,
-                fg=FOREGROUND_COLOR,
-                selectcolor=FOREGROUND_COLOR,
+                bg=colors["bg"],
+                fg=colors["fg"],
+                selectcolor=colors["fg"],
                 font=("Arial", 12),
                 highlightthickness=0,
                 bd=0,
-                activebackground=BACKGROUND_COLOR,
-                activeforeground=FOREGROUND_COLOR,
+                activebackground=colors["bg"],
+                activeforeground=colors["fg"],
             )
             radio.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
 
+            # Icon label for showing correct/incorrect status
             icon_label = tk.Label(
                 frame,
                 text="",
-                bg=BACKGROUND_COLOR,
+                bg=colors["bg"],
                 font=("Arial", 32),
                 width=2,
                 anchor="n",
@@ -449,20 +528,27 @@ class ExamSimulator:
 
     def show_result(self, display_index):
         """Show the result of the selected answer and provide feedback."""
+        colors = self.get_current_colors()
         question_data = self.get_current_question()
         valid_answers_count = question_data.get("valid_answers", 1)
         selected_option_index = self.shuffled_option_indices[display_index]
         is_correct = selected_option_index < valid_answers_count
+
+        # Disable all radio buttons after selection
         for radio, _ in self.answer_widgets:
             radio.config(state=tk.DISABLED)
+
+        # Show correct/incorrect icons
         for i, (radio, icon_label) in enumerate(self.answer_widgets):
             orig_idx = self.shuffled_option_indices[i]
             if orig_idx < valid_answers_count:
-                icon_label.config(text="✓", fg=SUCCESS_COLOR)
+                icon_label.config(text="✓", fg=colors["success"])
             elif i == display_index:
-                icon_label.config(text="×", fg=ERROR_COLOR)
+                icon_label.config(text="×", fg=colors["error"])
             else:
                 icon_label.config(text="")
+
+        # Update score if correct
         if is_correct:
             self.score += 1
         self.update_status()
@@ -476,6 +562,7 @@ class ExamSimulator:
             self.current_question_index += 1
             self.show_question()
         else:
+            # Calculate final score based on current filter
             if self.non_ai_var.get():
                 total = sum(1 for q in self.questions if not q.get("is_ai"))
             else:
@@ -503,6 +590,7 @@ def main():
 
     exam_file = args.path
 
+    # Auto-detect exam file if not specified
     if not exam_file:
         current_dir_files = [
             f for f in os.listdir() if f.endswith(".md") and f.lower() != "readme.md"
@@ -511,6 +599,7 @@ def main():
             exam_file = current_dir_files[0]
             print(f"No path specified. Using file: {exam_file}")
         else:
+            # Check exams subdirectory
             if os.path.exists("exams") and os.path.isdir("exams"):
                 exam_dir_files = [
                     os.path.join("exams", f)
@@ -521,6 +610,7 @@ def main():
                     exam_file = exam_dir_files[0]
                     print(f"No path specified. Using file: {exam_file}")
 
+    # Launch application
     root = tk.Tk()
     ExamSimulator(root, exam_file=exam_file)
     root.mainloop()
