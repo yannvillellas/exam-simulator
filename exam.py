@@ -85,6 +85,7 @@ class ExamSimulator:
         self.current_question_index = 0
         self.selected_answer = tk.StringVar()
         self.score = 0
+        self.questions_answered = 0
         self.randomized = False
 
         self.setup_ui()
@@ -395,6 +396,7 @@ class ExamSimulator:
         """Reset the quiz to the beginning with current settings."""
         self.current_question_index = 0
         self.score = 0
+        self.questions_answered = 0
         self.show_question()
 
     def initialize_question_order(self):
@@ -430,13 +432,13 @@ class ExamSimulator:
 
         if self.non_ai_var.get():
             status_text = (
-                f"Score: {self.score}/{question_count} | "
+                f"Score: {self.score}/{self.questions_answered} | "
                 f"Question {self.current_question_index + 1} of {question_count} "
                 f"(Non-AI only)"
             )
         else:
             status_text = (
-                f"Score: {self.score}/{question_count} | "
+                f"Score: {self.score}/{self.questions_answered} | "
                 f"Question {self.current_question_index + 1} of {question_count}"
             )
 
@@ -551,6 +553,7 @@ class ExamSimulator:
         # Update score if correct
         if is_correct:
             self.score += 1
+        self.questions_answered += 1
         self.update_status()
         self.result_shown = True
         self.root.bind("<Button-1>", lambda e: self.advance_to_next())
