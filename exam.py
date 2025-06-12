@@ -89,6 +89,7 @@ class ExamSimulator:
         self.randomized = False
 
         self.setup_ui()
+        self.update_jump_controls_visibility()  # Set initial visibility
         self.load_questions()
         self.show_question()
 
@@ -220,6 +221,25 @@ class ExamSimulator:
             command=self.toggle_theme,
         )
         self.dark_mode_check.pack(side=tk.LEFT, padx=5)
+
+        # Jump to question controls (only visible in non-random mode)
+        self.jump_frame = ttk.Frame(self.controls_frame)
+        self.jump_frame.pack(side=tk.LEFT, padx=15)
+
+        self.jump_label = ttk.Label(self.jump_frame, text="Jump to:")
+        self.jump_label.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.jump_var = tk.StringVar()
+        self.jump_entry = ttk.Entry(
+            self.jump_frame, textvariable=self.jump_var, width=5, font=("Arial", 10)
+        )
+        self.jump_entry.pack(side=tk.LEFT, padx=(0, 5))
+        self.jump_entry.bind("<Return>", self.jump_to_question)
+
+        self.jump_btn = ttk.Button(
+            self.jump_frame, text="Go", command=self.jump_to_question, width=4
+        )
+        self.jump_btn.pack(side=tk.LEFT)
 
         # Action buttons
         self.restart_btn = ttk.Button(
@@ -386,11 +406,44 @@ class ExamSimulator:
         self.randomized = self.randomize_var.get()
         self.initialize_question_order()
         self.restart_quiz()
+        self.update_jump_controls_visibility()
 
     def toggle_non_ai_only(self):
         """Toggle the filter to show only non-AI generated questions."""
         self.initialize_question_order()
         self.restart_quiz()
+
+    def jump_to_question(self, _event=None):
+        """Jump to a specific question number (only in non-random mode)."""
+        if self.randomized:
+            messagebox.showwarning(
+                "Warning", "Jump to question is only available in non-random mode."
+            )
+            return
+
+        try:
+            question_num = int(self.jump_var.get())
+            if question_num < 1 or question_num > len(self.question_order):
+                messagebox.showerror(
+                    "Error",
+                    f"Please enter a number between 1 and {len(self.question_order)}",
+                )
+                return
+
+            # Convert to 0-based index
+            self.current_question_index = question_num - 1
+            self.show_question()
+            self.jump_var.set("")  # Clear the input field
+
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid number")
+
+    def update_jump_controls_visibility(self):
+        """Show or hide jump controls based on randomization mode."""
+        if self.randomized:
+            self.jump_frame.pack_forget()
+        else:
+            self.jump_frame.pack(side=tk.LEFT, padx=15)
 
     def restart_quiz(self):
         """Reset the quiz to the beginning with current settings."""
